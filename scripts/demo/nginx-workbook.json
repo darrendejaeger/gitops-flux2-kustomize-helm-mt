@@ -1,0 +1,164 @@
+{
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+      "workbookDisplayName": {
+        "type": "string",
+        "defaultValue": "nginx",
+        "metadata": {
+          "description": "The friendly name for the workbook that is used in the Gallery or Saved List.  This name must be unique within a resource group."
+        }
+      },
+      "workbookType": {
+        "type": "string",
+        "defaultValue": "workbook",
+        "metadata": {
+          "description": "The gallery that the workbook will been shown under. Supported values include workbook, tsg, etc. Usually, this is 'workbook'"
+        }
+      },
+      "workspaceLAW": {
+        "type": "string",
+        "defaultValue": "",
+        "metadata": {
+          "description": "The friendly name for the workspace that is used in the Gallery or Saved List.  This name must be unique within a resource group."
+        }
+      },
+      "workbookSourceId": {
+        "type": "string",
+        "defaultValue": "[concat(resourceGroup().id, '/providers/microsoft.operationalinsights/workspaces/', parameters('workspaceLAW'))]",
+        "metadata": {
+          "description": "The id of resource instance to which the workbook will be associated"
+        }
+      },
+      "workbookId": {
+        "type": "string",
+        "defaultValue": "[newGuid()]",
+        "metadata": {
+          "description": "The unique guid for this workbook instance"
+        }
+      }
+    },
+    "variables": {
+      "workbookContent": {
+        "version": "Notebook/1.0",
+        "items": [
+          {
+            "type": 12,
+            "content": {
+              "version": "NotebookGroup/1.0",
+              "groupType": "editable",
+              "items": [
+                {
+                  "type": 1,
+                  "content": {
+                    "json": "## NGINX Status\n---\nWelcome to the NGINX workbook. \n\nWe've included a basic analytics query to get you started. Use the `Edit` button below each section to configure it or add more sections."
+                  },
+                  "name": "Nginx Title"
+                },
+                {
+                  "type": 3,
+                  "content": {
+                    "version": "KqlItem/1.0",
+                    "query": "InsightsMetrics\n| where Namespace == \"prometheus\" and Name == \"nginx_ingress_controller_success\"\n| summarize latestTime=max(TimeGenerated) by _ResourceId, Val, Computer\n| extend diff=now()-latestTime\n| extend status=iff(diff > time(2m), \"Fail\", iff(Val > 0, \"Success\", \"Fail\"))\n",
+                    "size": 3,
+                    "timeContext": {
+                      "durationMs": 86400000
+                    },
+                    "queryType": 0,
+                    "resourceType": "microsoft.operationalinsights/workspaces",
+                    "visualization": "tiles",
+                    "tileSettings": {
+                      "titleContent": {
+                        "columnMatch": "Computer",
+                        "formatter": 1
+                      },
+                      "leftContent": {
+                        "columnMatch": "status",
+                        "formatter": 18,
+                        "formatOptions": {
+                          "thresholdsOptions": "icons",
+                          "thresholdsGrid": [
+                            {
+                              "operator": "==",
+                              "thresholdValue": "Success",
+                              "representation": "success",
+                              "text": "Up"
+                            },
+                            {
+                              "operator": "==",
+                              "thresholdValue": "Fail",
+                              "representation": "failed",
+                              "text": "Down"
+                            },
+                            {
+                              "operator": "Default",
+                              "thresholdValue": null,
+                              "representation": "failed",
+                              "text": "Down"
+                            }
+                          ]
+                        },
+                        "numberFormat": {
+                          "unit": 17,
+                          "options": {
+                            "style": "decimal",
+                            "maximumFractionDigits": 2,
+                            "maximumSignificantDigits": 3
+                          }
+                        }
+                      },
+                      "showBorder": false
+                    }
+                  },
+                  "name": "Nginx Availability"
+                },
+                {
+                  "type": 3,
+                  "content": {
+                    "version": "KqlItem/1.0",
+                    "query": "InsightsMetrics\n| where Namespace == 'prometheus' and Name == 'nginx_ingress_controller_nginx_process_requests_total'\n| extend Tags = todynamic(Tags)\n| extend PodName = tostring(Tags.controller_pod)\n| extend CompPod = strcat(Computer, \"/\", PodName)\n| order by CompPod asc, TimeGenerated asc\n| serialize\n| extend PrevVal=iff(prev(CompPod)!=CompPod, 0.0, prev(Val)), PrevTimeGenerated=iff(prev(CompPod)!=CompPod, datetime(null), prev(TimeGenerated))  \n| where isnotnull(PrevTimeGenerated)\n| extend Count=(Val - PrevVal)\n| summarize totalRequests=sum(Count) by bin(TimeGenerated,10m), tostring(Computer)",
+                    "size": 0,
+                    "timeContext": {
+                      "durationMs": 14400000
+                    },
+                    "queryType": 0,
+                    "resourceType": "microsoft.operationalinsights/workspaces",
+                    "visualization": "barchart"
+                  },
+                  "name": "Nginx Total Requests"
+                }
+              ]
+            },
+            "name": "Nginx Workbook"
+          }
+        ],
+        "isLocked": false,
+        "fallbackResourceIds": [
+          ""
+        ]
+      }
+    },
+    "resources": [
+      {
+        "name": "[parameters('workbookId')]",
+        "type": "microsoft.insights/workbooks",
+        "location": "[resourceGroup().location]",
+        "apiVersion": "2021-03-08",
+        "dependsOn": [],
+        "kind": "shared",
+        "properties": {
+          "displayName": "[parameters('workbookDisplayName')]",
+          "serializedData": "[string(variables('workbookContent'))]",
+          "version": "1.0",
+          "sourceId": "[parameters('workbookSourceId')]",
+          "category": "[parameters('workbookType')]"
+        }
+      }
+    ],
+    "outputs": {
+      "workbookId": {
+        "type": "string",
+        "value": "[resourceId( 'microsoft.insights/workbooks', parameters('workbookId'))]"
+      }
+    },
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#"
+}

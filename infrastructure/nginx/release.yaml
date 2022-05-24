@@ -25,3 +25,5 @@ spec:
       type: NodePort
     ingressClassResource:
       name: nginx
+    metrics:
+      enabled: true
