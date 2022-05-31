@@ -21,9 +21,13 @@ spec:
   # Default values
   # https://github.com/bitnami/charts/blob/master/bitnami/nginx-ingress-controller/values.yaml
   values:
+    kind: Daemonset
+    daemonset:
+      useHostPort: true
     service:
       type: NodePort
     ingressClassResource:
       name: nginx
+    hostNetwork: true
     metrics:
       enabled: true

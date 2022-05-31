@@ -1,0 +1,21 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: container-azm-ms-agentconfig
+  namespace: kube-system
+data:
+  schema-version:
+    #string.used by agent to parse config. supported versions are {v1}. Configs with other schema versions will be rejected by the agent.
+    v1
+  config-version:
+    #string.used by customer to keep track of this config file's version in their source control/repository (max allowed 10 chars, other chars will be truncated)
+    ver1
+  prometheus-data-collection-settings: |-
+    [prometheus_data_collection_settings.cluster]
+        interval = "1m"
+        # Pod monitoring leverages prometheus scrape annotations
+        monitor_kubernetes_pods = true
+        # Additional service monitoring endpoints
+        kubernetes_services = [
+          "http://nginx-ingress-controller-metrics.nginx.svc.cluster.local:9913/metrics"
+        ]
